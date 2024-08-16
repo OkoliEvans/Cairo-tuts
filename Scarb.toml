@@ -7,6 +7,9 @@ edition = "2024_07"
 
 [dependencies]
 starknet = "2.7.0"
+alexandria_storage = { git = "https://github.com/keep-starknet-strange/alexandria.git", tag = "cairo-v2.3.0-rc0" }
+alexandria_math = { git = "https://github.com/keep-starknet-strange/alexandria.git", tag = "cairo-v2.6.0" }
+#openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.7.0" }
 
 [[target.starknet-contract]]
 
