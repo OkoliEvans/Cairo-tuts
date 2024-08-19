@@ -7,38 +7,41 @@ pub mod Bank {
     use starknet::storage::StoragePointerWriteAccess;
     use starknet::storage::StoragePathEntry;
     use mock::mock_bank_interface::{IMock, IMockDispatcher, IMockDispatcherTrait};
-    use mock::interface::{IERC20, IERC20Dispatcher, IERC20DispatcherTrait, IERC20LibraryDispatcher };
+    use mock::interface::{IERC20, IERC20Dispatcher, IERC20DispatcherTrait, IERC20LibraryDispatcher};
     use core::starknet::storage::Map;
-    use starknet::{ContractAddress, get_caller_address, contract_address, get_contract_address, class_hash, ClassHash };
+    use starknet::{
+        ContractAddress, get_caller_address, contract_address, get_contract_address, class_hash,
+        ClassHash
+    };
     use core::num::traits::Zero;
-    use alexandria_storage::list::{ List, ListTrait, IndexView };
+    use alexandria_storage::list::{List, ListTrait, IndexView};
 
     #[storage]
     struct Storage {
         user: Map::<ContractAddress, User>,
         balance: Map::<ContractAddress, u256>,
         totalFunds: u256,
-        // registered_users: List<ContractAddress>,
+        registered_users: List<ContractAddress>,
     }
 
     #[derive(Drop, Serde, starknet::Store)]
     pub struct User {
         name: felt252,
         phone: ByteArray,
-    }
-
-    #[event]
-    #[derive(Drop, starknet::Event)]
-    enum Event {
-        AccountCreated: AccountCreated,
-        Deposit: Deposit,
-        Withdrawal: Withdrawal,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    struct AccountCreated {
-        user: ContractAddress,
-        name: felt252,
+        }
+        
+        #[event]
+        #[derive(Drop, starknet::Event)]
+        enum Event {
+            AccountCreated: AccountCreated,
+            Deposit: Deposit,
+            Withdrawal: Withdrawal,
+            }
+            
+            #[derive(Drop, starknet::Event)]
+            struct AccountCreated {
+                user: ContractAddress,
+                name: felt252,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -73,14 +76,17 @@ pub mod Bank {
                 0x07c535ddb7bf3d3cb7c033bd1a4c3aac02927a4832da795606c0f3dbbc6efd17
                 .try_into()
                 .unwrap();
-            let contract_class: ClassHash = 0x07c535ddb7bf3d3cb7c033bd1a4c3aac02927a4832da795606c0f3dbbc6efd18.try_into().expect('wrong class');
+            let contract_class: ClassHash =
+                0x07c535ddb7bf3d3cb7c033bd1a4c3aac02927a4832da795606c0f3dbbc6efd18
+                .try_into()
+                .expect('wrong class');
 
             assert!(amount != 0, "amount cannot be zero");
             assert!(contract.is_non_zero(), "Zero address detected");
             let balance = self.balance.entry(caller).read();
             let totalFundsBalance = self.totalFunds.read();
             IERC20Dispatcher { contract_address }.transfer(contract, amount);
-            IERC20LibraryDispatcher{ class_hash: contract_class }.transfer(contract, amount);
+            IERC20LibraryDispatcher { class_hash: contract_class }.transfer(contract, amount);
             self.balance.entry(caller).write(balance + amount);
             self.totalFunds.write(totalFundsBalance + amount);
             self.emit(Deposit { user: caller, amount });
@@ -94,8 +100,6 @@ pub mod Bank {
 
     #[generate_trait]
     impl Private of PrivateTrait {
-        fn accept_arrays(ref self: ContractState, users: Array<ContractAddress> ) {
-
-        }
+        fn accept_arrays(ref self: ContractState, users: Array<ContractAddress>) {}
     }
 }
