@@ -113,10 +113,13 @@ pub mod Bank {
             assert!(contract.is_non_zero(), "Zero address detected");
             let balance = self.balance.entry(caller).read();
             let totalFundsBalance = self.totalFunds.read();
-            IERC20Dispatcher { contract_address }.transfer(contract, amount);
-            IERC20LibraryDispatcher { class_hash: contract_class }.transfer(contract, amount);
+
+            IERC20Dispatcher { contract_address }.transfer_from(caller, contract, amount);
+            IERC20LibraryDispatcher { class_hash: contract_class }.transfer_from(caller, contract, amount);
+
             self.balance.entry(caller).write(balance + amount);
             self.totalFunds.write(totalFundsBalance + amount);
+
             self.emit(Deposit { user: caller, amount });
         }
 
@@ -124,7 +127,30 @@ pub mod Bank {
             let caller: ContractAddress = get_caller_address();
             self.user.entry(caller).read()
         }
-        /// TODO withdraw function
+        
+        fn withdraw(ref self: ContractState, amount: u256) {
+            let contract: ContractAddress = get_contract_address();
+            let caller: ContractAddress = get_caller_address();
+
+            let token_address: ContractAddress =
+                0x07c535ddb7bf3d3cb7c033bd1a4c3aac02927a4832da795606c0f3dbbc6efd17
+                .try_into()
+                .unwrap();
+
+            let contract_balance = self.balance.entry(contract).read();
+            let user_balance = self.balance.entry(caller).read();
+            let total_funds_balance = self.totalFunds.read();
+
+            assert!(contract_balance >= amount, "insufficient contract balance");
+            assert!(user_balance >= amount, "insufficient funds");
+
+            self.balance.entry(caller).write(user_balance - amount);
+            self.totalFunds.write(total_funds_balance - amount);
+
+            IERC20Dispatcher { contract_address: token_address }.transfer(caller, amount);
+
+            self.emit(Withdrawal { user: caller, amount });
+        }
     }
 
     #[generate_trait]
