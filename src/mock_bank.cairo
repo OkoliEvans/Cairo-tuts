@@ -1,20 +1,24 @@
 #[starknet::contract]
 pub mod Bank {
-    use starknet::storage::StoragePointerReadAccess;
+    use core::hash::{ HashStateTrait, HashStateExTrait};
     use starknet::event::EventEmitter;
-    use starknet::storage::StorageMapReadAccess;
-    use starknet::storage::StorageMapWriteAccess;
-    use starknet::storage::StoragePointerWriteAccess;
-    use starknet::storage::StoragePathEntry;
+    use starknet::storage::{
+        StorageMapReadAccess, StoragePointerReadAccess, StorageMapWriteAccess,
+        StoragePointerWriteAccess, StoragePathEntry, Map
+    };
     use mock::mock_bank_interface::{IMock, IMockDispatcher, IMockDispatcherTrait};
     use mock::interface::{IERC20, IERC20Dispatcher, IERC20DispatcherTrait, IERC20LibraryDispatcher};
-    use core::starknet::storage::Map;
     use starknet::{
         ContractAddress, get_caller_address, contract_address, get_contract_address, class_hash,
         ClassHash
     };
-    use core::num::traits::Zero;
+    use core::{poseidon::PoseidonTrait, pedersen::PedersenTrait, num::traits::Zero};
     use alexandria_storage::list::{List, ListTrait, IndexView};
+    use openzeppelin::access::ownable::OwnableComponent;
+    use openzeppelin::upgrades::UpgradeableComponent;
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    // component!(path: UpgradeableComponent, storage: upgradable, event: UpgradableEvent);
 
     #[storage]
     struct Storage {
@@ -22,27 +26,43 @@ pub mod Bank {
         balance: Map::<ContractAddress, u256>,
         totalFunds: u256,
         registered_users: List<ContractAddress>,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        upgradable: UpgradeableComponent::Storage,
     }
 
     #[derive(Drop, Serde, starknet::Store)]
     pub struct User {
         name: felt252,
         phone: ByteArray,
-        }
-        
-        #[event]
-        #[derive(Drop, starknet::Event)]
-        enum Event {
-            AccountCreated: AccountCreated,
-            Deposit: Deposit,
-            Withdrawal: Withdrawal,
-            }
-            
-            #[derive(Drop, starknet::Event)]
-            struct AccountCreated {
-                user: ContractAddress,
-                name: felt252,
     }
+
+    #[derive(Drop, starknet::Store)]
+    enum UserLevel {
+        basic,
+        premium,
+        veteran
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        AccountCreated: AccountCreated,
+        Deposit: Deposit,
+        Withdrawal: Withdrawal,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct AccountCreated {
+        user: ContractAddress,
+        name: felt252,
+    }
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl InternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
     #[derive(Drop, starknet::Event)]
     struct Deposit {
@@ -56,14 +76,22 @@ pub mod Bank {
         amount: u256,
     }
 
+    #[constructor]
+    fn constructor(ref self: ContractState) {
+        let caller = get_caller_address();
+        self.ownable.initializer(caller);
+    }
+
     #[abi(embed_v0)]
     impl IMockImpl of IMock<ContractState> {
         fn create_account(ref self: ContractState, name: felt252, phone: ByteArray) {
+            self.ownable.assert_only_owner();
             let caller = get_caller_address();
             let days = array![5, 'monday', 'Tuesday'];
             let mut registered_users = ArrayTrait::new();
             assert(name != '' && phone != "", 'name cannot be blank');
-            self.user.entry(caller).write(User { name, phone });
+            let name_hash: felt252 = PoseidonTrait::new().update_with(name).finalize();
+            self.user.entry(caller).write(User { name: name_hash, phone });
             registered_users.append(caller);
             self.accept_arrays(registered_users);
             self.emit(AccountCreated { user: caller, name, });
@@ -96,10 +124,18 @@ pub mod Bank {
             let caller: ContractAddress = get_caller_address();
             self.user.entry(caller).read()
         }
+        /// TODO withdraw function
     }
 
     #[generate_trait]
     impl Private of PrivateTrait {
         fn accept_arrays(ref self: ContractState, users: Array<ContractAddress>) {}
+
+        fn get_user_level(ref self: UserLevel) -> ByteArray{
+            match self {
+                 UserLevel::basic => "basic",
+                 
+            }
+        }
     }
 }
