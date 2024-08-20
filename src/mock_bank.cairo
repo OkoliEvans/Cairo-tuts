@@ -87,7 +87,6 @@ pub mod Bank {
         fn create_account(ref self: ContractState, name: felt252, phone: ByteArray) {
             self.ownable.assert_only_owner();
             let caller = get_caller_address();
-            let days = array![5, 'monday', 'Tuesday'];
             let mut registered_users = ArrayTrait::new();
             assert(name != '' && phone != "", 'name cannot be blank');
             let name_hash: felt252 = PoseidonTrait::new().update_with(name).finalize();
