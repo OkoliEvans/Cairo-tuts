@@ -136,11 +136,10 @@ pub mod Bank {
                 .try_into()
                 .unwrap();
 
-            let contract_balance = self.balance.entry(contract).read();
             let user_balance = self.balance.entry(caller).read();
             let total_funds_balance = self.totalFunds.read();
 
-            assert!(contract_balance >= amount, "insufficient contract balance");
+            assert!(total_funds_balance >= amount, "insufficient contract balance");
             assert!(user_balance >= amount, "insufficient funds");
 
             self.balance.entry(caller).write(user_balance - amount);
