@@ -132,9 +132,10 @@ pub mod Bank {
         fn accept_arrays(ref self: ContractState, users: Array<ContractAddress>) {}
 
         fn get_user_level(ref self: UserLevel) -> ByteArray{
-            match self {
-                 UserLevel::basic => "basic",
-                 
+            match @self {
+                UserLevel::basic => "basic",
+                UserLevel::premium => "premium",
+                UserLevel::veteran => "veteran"
             }
         }
     }
