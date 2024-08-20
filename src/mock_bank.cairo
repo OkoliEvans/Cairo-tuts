@@ -128,7 +128,6 @@ pub mod Bank {
         }
         
         fn withdraw(ref self: ContractState, amount: u256) {
-            let contract: ContractAddress = get_contract_address();
             let caller: ContractAddress = get_caller_address();
 
             let token_address: ContractAddress =
