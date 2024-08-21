@@ -16,9 +16,10 @@ pub mod Bank {
     use alexandria_storage::list::{List, ListTrait, IndexView};
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::upgrades::UpgradeableComponent;
+    use openzeppelin::upgrades::interface::IUpgradeable;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
-    // component!(path: UpgradeableComponent, storage: upgradable, event: UpgradableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradableEvent);
 
     #[storage]
     struct Storage {
@@ -28,7 +29,8 @@ pub mod Bank {
         registered_users: List<ContractAddress>,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
-        upgradable: UpgradeableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
     }
 
     #[derive(Drop, Serde, starknet::Store)]
@@ -52,6 +54,8 @@ pub mod Bank {
         Withdrawal: Withdrawal,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -63,6 +67,8 @@ pub mod Bank {
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl InternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
     #[derive(Drop, starknet::Event)]
     struct Deposit {
@@ -86,6 +92,7 @@ pub mod Bank {
     impl IMockImpl of IMock<ContractState> {
         fn create_account(ref self: ContractState, name: felt252, phone: ByteArray) {
             self.ownable.assert_only_owner();
+
             let caller = get_caller_address();
             let mut registered_users = ArrayTrait::new();
             assert(name != '' && phone != "", 'name cannot be blank');
@@ -147,6 +154,15 @@ pub mod Bank {
             IERC20Dispatcher { contract_address: token_address }.transfer(caller, amount);
 
             self.emit(Withdrawal { user: caller, amount });
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+
+            self.upgradeable._upgrade(new_class_hash);
         }
     }
 
