@@ -28,8 +28,6 @@ pub mod Bank {
         registered_users: List<ContractAddress>,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
-        #[substorage(v0)]
-        upgradable: UpgradeableComponent::Storage,
     }
 
     #[derive(Drop, Serde, starknet::Store)]
