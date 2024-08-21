@@ -87,7 +87,6 @@ pub mod Bank {
         fn create_account(ref self: ContractState, name: felt252, phone: ByteArray) {
             self.ownable.assert_only_owner();
             let caller = get_caller_address();
-            let days = array![5, 'monday', 'Tuesday'];
             let mut registered_users = ArrayTrait::new();
             assert(name != '' && phone != "", 'name cannot be blank');
             let name_hash: felt252 = PoseidonTrait::new().update_with(name).finalize();
@@ -113,10 +112,13 @@ pub mod Bank {
             assert!(contract.is_non_zero(), "Zero address detected");
             let balance = self.balance.entry(caller).read();
             let totalFundsBalance = self.totalFunds.read();
-            IERC20Dispatcher { contract_address }.transfer(contract, amount);
-            IERC20LibraryDispatcher { class_hash: contract_class }.transfer(contract, amount);
+
+            IERC20Dispatcher { contract_address }.transfer_from(caller, contract, amount);
+            IERC20LibraryDispatcher { class_hash: contract_class }.transfer_from(caller, contract, amount);
+
             self.balance.entry(caller).write(balance + amount);
             self.totalFunds.write(totalFundsBalance + amount);
+
             self.emit(Deposit { user: caller, amount });
         }
 
@@ -124,7 +126,28 @@ pub mod Bank {
             let caller: ContractAddress = get_caller_address();
             self.user.entry(caller).read()
         }
-        /// TODO withdraw function
+        
+        fn withdraw(ref self: ContractState, amount: u256) {
+            let caller: ContractAddress = get_caller_address();
+
+            let token_address: ContractAddress =
+                0x07c535ddb7bf3d3cb7c033bd1a4c3aac02927a4832da795606c0f3dbbc6efd17
+                .try_into()
+                .unwrap();
+
+            let user_balance = self.balance.entry(caller).read();
+            let total_funds_balance = self.totalFunds.read();
+
+            assert!(total_funds_balance >= amount, "insufficient contract balance");
+            assert!(user_balance >= amount, "insufficient funds");
+
+            self.balance.entry(caller).write(user_balance - amount);
+            self.totalFunds.write(total_funds_balance - amount);
+
+            IERC20Dispatcher { contract_address: token_address }.transfer(caller, amount);
+
+            self.emit(Withdrawal { user: caller, amount });
+        }
     }
 
     #[generate_trait]
@@ -132,9 +155,10 @@ pub mod Bank {
         fn accept_arrays(ref self: ContractState, users: Array<ContractAddress>) {}
 
         fn get_user_level(ref self: UserLevel) -> ByteArray{
-            match self {
-                 UserLevel::basic => "basic",
-                 
+            match @self {
+                UserLevel::basic => "basic",
+                UserLevel::premium => "premium",
+                UserLevel::veteran => "veteran"
             }
         }
     }

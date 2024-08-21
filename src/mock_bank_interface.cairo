@@ -5,5 +5,6 @@ pub trait IMock <T> {
     fn create_account(ref self: T, name: felt252, phone: ByteArray);
     fn deposit(ref self: T, amount: u256);
     fn get_user_account_details(self: @T) -> User;
+    fn withdraw(ref self: T, amount: u256);
 }
 
