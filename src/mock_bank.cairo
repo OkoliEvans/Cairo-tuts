@@ -1,6 +1,6 @@
 #[starknet::contract]
 pub mod Bank {
-    use core::hash::{ HashStateTrait, HashStateExTrait};
+    use core::hash::{HashStateTrait, HashStateExTrait};
     use starknet::event::EventEmitter;
     use starknet::storage::{
         StorageMapReadAccess, StoragePointerReadAccess, StorageMapWriteAccess,
@@ -28,6 +28,7 @@ pub mod Bank {
         registered_users: List<ContractAddress>,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
         upgradable: UpgradeableComponent::Storage,
     }
 
@@ -108,13 +109,14 @@ pub mod Bank {
                 .try_into()
                 .expect('wrong class');
 
-            assert!(amount != 0, "amount cannot be zero");
+            assert!(amount > 0, "amount cannot be zero");
             assert!(contract.is_non_zero(), "Zero address detected");
             let balance = self.balance.entry(caller).read();
             let totalFundsBalance = self.totalFunds.read();
 
             IERC20Dispatcher { contract_address }.transfer_from(caller, contract, amount);
-            IERC20LibraryDispatcher { class_hash: contract_class }.transfer_from(caller, contract, amount);
+            IERC20LibraryDispatcher { class_hash: contract_class }
+                .transfer_from(caller, contract, amount);
 
             self.balance.entry(caller).write(balance + amount);
             self.totalFunds.write(totalFundsBalance + amount);
@@ -126,7 +128,7 @@ pub mod Bank {
             let caller: ContractAddress = get_caller_address();
             self.user.entry(caller).read()
         }
-        
+
         fn withdraw(ref self: ContractState, amount: u256) {
             let caller: ContractAddress = get_caller_address();
 
@@ -154,7 +156,7 @@ pub mod Bank {
     impl Private of PrivateTrait {
         fn accept_arrays(ref self: ContractState, users: Array<ContractAddress>) {}
 
-        fn get_user_level(ref self: UserLevel) -> ByteArray{
+        fn get_user_level(ref self: UserLevel) -> ByteArray {
             match @self {
                 UserLevel::basic => "basic",
                 UserLevel::premium => "premium",
