@@ -95,13 +95,16 @@ pub mod Bank {
 
             let caller = get_caller_address();
             let mut registered_users = ArrayTrait::new();
+
             assert(name != '' && phone != "", 'name cannot be blank');
             let name_hash: felt252 = PoseidonTrait::new().update_with(name).finalize();
             self.user.entry(caller).write(User { name: name_hash, phone });
             registered_users.append(caller);
-            let reg_users_span = @registered_users;
+
+            let reg_users_span = registered_users.span();
             self.accept_arrays(registered_users);
 
+            // Loop
             loop {
                 let mut i: usize = 0;
                 if i > reg_users_span.len() {
@@ -109,6 +112,19 @@ pub mod Bank {
                 }
                 println!("users: {}", i);
                 i += 1;
+            };
+
+            // While loop 
+            let mut n = 0;
+            while n < reg_users_span.len() {
+                println!("users: {:?}", reg_users_span[n]);
+
+                n += 1;
+            };
+
+            // For Loop
+            for user in reg_users_span {
+                println!("Current user is {:?}", user);
             };
 
             self.emit(AccountCreated { user: caller, name, });
