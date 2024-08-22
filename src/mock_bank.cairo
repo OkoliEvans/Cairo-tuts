@@ -12,7 +12,7 @@ pub mod Bank {
         ContractAddress, get_caller_address, contract_address, get_contract_address, class_hash,
         ClassHash
     };
-    use core::{poseidon::PoseidonTrait, pedersen::PedersenTrait, num::traits::Zero};
+    use core::{poseidon::PoseidonTrait, pedersen::PedersenTrait, num::traits::Zero, dict::Felt252Dict};
     use alexandria_storage::list::{List, ListTrait, IndexView};
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::upgrades::UpgradeableComponent;
@@ -99,7 +99,18 @@ pub mod Bank {
             let name_hash: felt252 = PoseidonTrait::new().update_with(name).finalize();
             self.user.entry(caller).write(User { name: name_hash, phone });
             registered_users.append(caller);
+            let reg_users_span = @registered_users;
             self.accept_arrays(registered_users);
+
+            loop {
+                let mut i: usize = 0;
+                if i > reg_users_span.len() {
+                    break;
+                }
+                println!("users: {}", i);
+                i += 1;
+            };
+
             self.emit(AccountCreated { user: caller, name, });
         }
 
@@ -119,6 +130,7 @@ pub mod Bank {
             assert!(contract.is_non_zero(), "Zero address detected");
             let balance = self.balance.entry(caller).read();
             let totalFundsBalance = self.totalFunds.read();
+            let mut user_deposit: Felt252Dict<u128> = Default::default();
 
             IERC20Dispatcher { contract_address }.transfer_from(caller, contract, amount);
             IERC20LibraryDispatcher { class_hash: contract_class }
@@ -127,9 +139,15 @@ pub mod Bank {
             self.balance.entry(caller).write(balance + amount);
             self.totalFunds.write(totalFundsBalance + amount);
 
+            user_deposit.insert('name', 2);
+
+            if user_deposit.get('name') > 0 {
+
+            }
+
             self.emit(Deposit { user: caller, amount });
         }
-
+        
         fn get_user_account_details(self: @ContractState) -> User {
             let caller: ContractAddress = get_caller_address();
             self.user.entry(caller).read()
