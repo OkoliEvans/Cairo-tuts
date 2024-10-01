@@ -15,14 +15,15 @@ pub mod Bank {
     use core::{poseidon::PoseidonTrait, pedersen::PedersenTrait, num::traits::Zero, dict::Felt252Dict};
     use alexandria_storage::list::{List, ListTrait, IndexView};
     use openzeppelin::access::ownable::OwnableComponent;
-    use openzeppelin::upgrades::UpgradeableComponent;
-    use openzeppelin::upgrades::interface::IUpgradeable;
+    use openzeppelin::upgrades::{ UpgradeableComponent, interface::IUpgradeable };
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradableEvent);
 
     #[storage]
     struct Storage {
+        name: felt252,
+        phone: felt252,
         user: Map::<ContractAddress, User>,
         balance: Map::<ContractAddress, u256>,
         totalFunds: u256,
@@ -83,9 +84,11 @@ pub mod Bank {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState) {
-        let caller = get_caller_address();
-        self.ownable.initializer(caller);
+    fn constructor(ref self: ContractState, user_address: ContractAddress, name: felt252, phone: felt252) {
+        // let caller = get_caller_address();
+        self.ownable.initializer(user_address);
+        self.name.write(name);
+        self.phone.write(phone);
     }
 
     #[abi(embed_v0)]
